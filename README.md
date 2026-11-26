@@ -17,9 +17,13 @@ are byte-identical to HF `J-sandler/Qwen3-4B-DNeo` `8451a2e8446c`. The target is
   - `accepted` (count): the number of accepted drafts.
   - `memory_positions`: the runtime's memory positions after the round.
 
-  The rejection boundary is `fork = P + 1 + count`. `proposed[:count]` must equal `sequence[P+1 : fork]`, and
-  `memory_positions` must equal `fork .. P+γ`. Otherwise `ValueError` is raised, so a trace that disagrees with
-  its sequence is never replayed. `results/h100_20261125/report.rollouts.json` uses this format
+  The rejection boundary is `fork = P + 1 + count`. The input must be a complete reference-runtime trace. Two
+  checks raise `ValueError`. First, the accepted drafts are compared with the part of `sequence[P+1 : fork]` that
+  the sequence actually holds. Second, `memory_positions` must equal `fork .. P+γ`. The first check is partial
+  by design: the runtime trims the last round's output at `max_new_tokens`, so the sequence can end inside an
+  accepted run. As a result, a sequence that ends at the anchor while the trace records every draft as accepted
+  gives `[]` with no error. Rollouts from other sources need their own boundary check before replay.
+  `results/h100_20261125/report.rollouts.json` uses this format
   (`[{"sequence": [...], "trace": [...]}]`).
 
 **Output: per-layer `input_layernorm` features at the original positions, one entry per rejecting round.**
