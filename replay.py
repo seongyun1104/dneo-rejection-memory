@@ -99,6 +99,27 @@ def masked_prefill_features(target, sequence, branches):
     return committed, out
 
 
+@dataclass(frozen=True, eq=False)
+class RejectionMemory:
+    round: int
+    positions: tuple[int, ...]
+    token_ids: tuple[int, ...]
+    features: torch.Tensor
+
+
+def replay_rollout(target, sequence, trace):
+    """Rejection memory of every rejecting round, in trace order; fully accepted rounds have none.
+
+    `features` is [1, len(positions), num_target_layers, hidden], the tensor `DNeoRuntime.memory` holds after
+    that round and the draft of round + 1 consumes.
+    """
+    branches = [b for b in branches_from_trace(sequence, trace) if b is not None]
+    if not branches:
+        return []
+    _, features = masked_prefill_features(target, sequence, branches)
+    return [RejectionMemory(b.round, tuple(b.positions), b.token_ids, f) for b, f in zip(branches, features)]
+
+
 def independent_branch_features(target, sequence, branch):
     """Plain causal forward of committed[:fork] + branch; returns only the branch rows."""
     device = target.model.embed_tokens.weight.device
