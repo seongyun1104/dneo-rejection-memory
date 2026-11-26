@@ -60,6 +60,14 @@ How the replay works: the committed sequence is followed by every rejected branc
 mask lets each branch token see only `sequence[:fork]` and the earlier tokens of its own branch. Branch tokens
 keep their original position ids.
 
+![Replay validation flow](docs/replay_validation.png)
+
+The diagram shows how the replay is validated (`check.py`). From one reference rollout, three sources give the
+memory: the runtime's live verify features, an independent causal forward per branch, and the single masked
+prefill. Their pre-MoFA features (all-layer `input_layernorm` outputs) are compared at the original positions.
+Each memory is then fed to the next draft with the same prefix and anchor, and the draft hidden states are
+compared.
+
 ## What was verified where
 
 | commit | content | verified by |
